@@ -1,11 +1,20 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Continuous deployment pipeline for serverless application
+Description: Continuous deployment pipeline for serverless application with GitHub
 
 Parameters:
-  CodeCommitRepoName:
+  GitHubOwner:
     Type: String
-    Description: Name of the CodeCommit repository
-    Default: sam-lambda-codedeploy-repo
+    Description: GitHub username or organization name
+  GitHubRepo:
+    Type: String
+    Description: Name of the GitHub repository
+  GitHubBranch:
+    Type: String
+    Description: Branch to monitor
+    Default: main
+  GitHubTokenSecretArn:
+    Type: String
+    Description: ARN of the Secrets Manager secret containing GitHub token
   S3Bucket:
     Type: String
     Description: S3 bucket for storing artifacts
@@ -19,12 +28,6 @@ Parameters:
     Default: sam-lambda-codedeploy-stack
 
 Resources:
-  CodeCommitRepo:
-    Type: AWS::CodeCommit::Repository
-    Properties:
-      RepositoryName: !Ref CodeCommitRepoName
-      RepositoryDescription: Repository for serverless application
-
   CodeBuildProject:
     Type: AWS::CodeBuild::Project
     Properties:
@@ -44,9 +47,9 @@ Resources:
           - Name: S3_PREFIX
             Value: !Ref S3Prefix
       Source:
-        Type: CODECOMMIT
-        Location: !Sub https://git-codecommit.${AWS::Region}.amazonaws.com/v1/repos/${CodeCommitRepoName}
-      BuildSpec: buildspec.yml
+        Type: GITHUB
+        Location: !Sub https://github.com/${GitHubOwner}/${GitHubRepo}.git
+        BuildSpec: buildspec.yml
 
   CodeBuildRole:
     Type: AWS::IAM::Role
@@ -92,13 +95,15 @@ Resources:
               ActionTypeId:
                 Category: Source
                 Owner: AWS
-                Provider: CodeCommit
+                Provider: CodeStarSourceConnection
                 Version: '1'
               OutputArtifacts:
                 - Name: SourceArtifact
               Configuration:
-                RepositoryName: !Ref CodeCommitRepoName
-                BranchName: main
+                ConnectionArn: "arn:aws:codeconnections:ap-southeast-1:321767375064:connection/e3fd81c6-e084-4c24-a40b-f3f3d3f20eb8"
+                FullRepositoryId: "thuongnn/sam-lambda-codedeploy"
+                BranchName: "main"
+                OutputArtifactFormat: "CODE_ZIP"
               RunOrder: 1
         - Name: Build
           Actions:
@@ -158,9 +163,9 @@ Resources:
                   - !Sub arn:aws:s3:::${S3Bucket}
               - Effect: Allow
                 Action:
-                  - codecommit:*
                   - codebuild:*
                   - cloudformation:*
+                  - secretsmanager:GetSecretValue
                 Resource: '*'
 
   CloudFormationRole:
@@ -194,5 +199,3 @@ Resources:
 Outputs:
   PipelineName:
     Value: !Ref CodePipeline
-  RepositoryCloneUrl:
-    Value: !Sub https://git-codecommit.${AWS::Region}.amazonaws.com/v1/repos/${CodeCommitRepoName}
