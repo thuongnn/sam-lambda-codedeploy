@@ -1,0 +1,27 @@
+{
+    "name": "sam-lambda-codedeploy",
+    "description": "SAM Lambda project with Book CRUD API",
+    "version": "0.0.1",
+    "private": true,
+    "main": "index.js",
+    "type": "commonjs",
+    "devDependencies": {
+        "jest": "^29.2.1"
+    },
+    "scripts": {
+        "test": "jest",
+        "build": "sam build",
+        "deploy": "sam deploy --guided",
+        "local": "sam local start-api"
+    },
+    "jest": {
+        "testMatch": [
+            "**/__tests__/**/*.js",
+            "**/?(*.)+(spec|test).js"
+        ],
+        "moduleFileExtensions": [
+            "js"
+        ],
+        "testEnvironment": "node"
+    }
+}

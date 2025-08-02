@@ -1,0 +1,90 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: sam-lambda-codedeploy
+Resources:
+  bookApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/book-api.bookApiHandler
+      Runtime: nodejs22.x
+      Architectures:
+      - x86_64
+      MemorySize: 256
+      Timeout: 30
+      Description: A Lambda function that handles book CRUD operations.
+      Policies:
+      - AWSLambdaBasicExecutionRole
+      Events:
+        GetBooks:
+          Type: Api
+          Properties:
+            Path: /books
+            Method: GET
+        GetBook:
+          Type: Api
+          Properties:
+            Path: /books/{id}
+            Method: GET
+        CreateBook:
+          Type: Api
+          Properties:
+            Path: /books
+            Method: POST
+        UpdateBook:
+          Type: Api
+          Properties:
+            Path: /books/{id}
+            Method: PUT
+        DeleteBook:
+          Type: Api
+          Properties:
+            Path: /books/{id}
+            Method: DELETE
+        OptionsBooks:
+          Type: Api
+          Properties:
+            Path: /books
+            Method: OPTIONS
+        OptionsBook:
+          Type: Api
+          Properties:
+            Path: /books/{id}
+            Method: OPTIONS
+      CodeUri: s3://aws-sam-cli-managed-default-samclisourcebucket-brbey1qmqnv1/4efe0b686f45cdc620fd8342bcf6e345
+    Metadata:
+      SamResourceId: bookApiFunction
+  CloudWatchAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: LambdaErrorAlarm
+      AlarmDescription: Alarm if Lambda function has errors
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+      - Name: FunctionName
+        Value:
+          Ref: bookApiFunction
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      AlarmActions:
+      - Ref: SNSTopic
+    Metadata:
+      SamResourceId: CloudWatchAlarm
+  SNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: LambdaErrorNotifications
+    Metadata:
+      SamResourceId: SNSTopic
+Globals:
+  Function:
+    LoggingConfig:
+      LogFormat: JSON
+  Api:
+    Cors:
+      AllowMethods: '''GET,POST,PUT,DELETE,OPTIONS'''
+      AllowHeaders: '''Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'''
+      AllowOrigin: '''*'''

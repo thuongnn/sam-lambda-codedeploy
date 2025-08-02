@@ -1,0 +1,94 @@
+AWSTemplateFormatVersion: 2010-09-09
+Transform: AWS::Serverless-2016-10-31
+Description: sam-lambda-codedeploy
+
+# Resources declares the AWS resources that you want to include in the stack
+# https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/resources-section-structure.html
+Resources:
+  # Each Lambda function is defined by properties:
+  # https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+
+  # Book API Lambda function
+  bookApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/book-api.bookApiHandler
+      Runtime: nodejs22.x
+      Architectures:
+      - x86_64
+      MemorySize: 256
+      Timeout: 30
+      Description: A Lambda function that handles book CRUD operations.
+      Policies:
+      - AWSLambdaBasicExecutionRole
+      Events:
+        # API Gateway events for book endpoints
+        GetBooks:
+          Type: Api
+          Properties:
+            Path: /books
+            Method: GET
+        GetBook:
+          Type: Api
+          Properties:
+            Path: /books/{id}
+            Method: GET
+        CreateBook:
+          Type: Api
+          Properties:
+            Path: /books
+            Method: POST
+        UpdateBook:
+          Type: Api
+          Properties:
+            Path: /books/{id}
+            Method: PUT
+        DeleteBook:
+          Type: Api
+          Properties:
+            Path: /books/{id}
+            Method: DELETE
+        OptionsBooks:
+          Type: Api
+          Properties:
+            Path: /books
+            Method: OPTIONS
+        OptionsBook:
+          Type: Api
+          Properties:
+            Path: /books/{id}
+            Method: OPTIONS
+
+  CloudWatchAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: LambdaErrorAlarm
+      AlarmDescription: Alarm if Lambda function has errors
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref bookApiFunction
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      AlarmActions:
+        - !Ref SNSTopic
+
+  SNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: LambdaErrorNotifications 
+
+# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+Globals:
+  Function:
+    LoggingConfig:
+      LogFormat: JSON
+  Api:
+    Cors:
+      AllowMethods: "'GET,POST,PUT,DELETE,OPTIONS'"
+      AllowHeaders: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+      AllowOrigin: "'*'"
